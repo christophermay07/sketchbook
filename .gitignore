@@ -1,0 +1,19 @@
+## Build and Test Artifacts
+*.log
+target/
+
+
+## IDE-Specific Files and Folders
+
+# Netbeans
+nbproject/
+nb-configuration.xml
+nbactions.xml
+
+# Eclipse / JBoss Developer Studio
+.classpath
+.project
+.settings
+.metadata
+RemoteSystemsTempFiles
+
