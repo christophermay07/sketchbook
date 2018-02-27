@@ -1,0 +1,31 @@
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:f="http://java.sun.com/jsf/core"
+  xmlns:h="http://java.sun.com/jsf/html"
+  xmlns:ui="http://java.sun.com/jsf/facelets">
+
+  <h:head>
+    <title>Deployed Services</title>
+    <h:outputStylesheet library="css" name="service-status.css" />
+  </h:head>
+
+  <h:body>
+    <h1>Deployed Services</h1>
+
+    <table>
+      <tr>
+        <th>Object Name:</th>
+        <th>Endpoint:</th>
+      </tr>
+
+      <tbody>
+        <ui:repeat var="serviceEndpoint" value="#{status.serviceEndpoints}">
+          <tr>
+            <td>#{serviceEndpoint.objectName}</td>
+            <td><a href="#{serviceEndpoint.endpoint}?wsdl">#{serviceEndpoint.endpoint}</a></td>
+          </tr>
+        </ui:repeat>
+      </tbody>
+    </table>
+  </h:body>
+</html>
