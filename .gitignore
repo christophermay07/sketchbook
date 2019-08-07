@@ -17,3 +17,5 @@ nbactions.xml
 .metadata
 RemoteSystemsTempFiles
 
+# IntelliJ
+.idea/
