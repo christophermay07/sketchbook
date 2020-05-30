@@ -1,0 +1,66 @@
+---
+## MAJOR TODOS:
+## - This works for user chmay, on Fedora 32. How much can I genericize? (e.g., create role based on OS, etc.)
+##
+
+- name: TODO - Name me! 
+  hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+    - name: Update installed packages to latest
+      dnf:
+        name: "*"
+        state: latest
+
+    - name: RPM Fusion repo (nonfree)
+      dnf:
+        ## TODO: "$(rpm -E %fedora)" to get release number instead of hardcoded 32 (or, is there a better way??)
+        name: "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-32.noarch.rpm"
+        state: latest
+
+    - name: RPM Fusion repo (free)
+      dnf:
+        ## TODO: "$(rpm -E %fedora)" to get release number instead of hardcoded 32 (or, is there a better way??)
+        name: "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-32.noarch.rpm"
+        state: latest
+
+    - name: Install packages
+      dnf:
+        name: "{{ item }}"
+        # TODO: with_file for dnf is deprecated; need to learn to do the style below
+        #name: "{{ query('file', ['packages.txt']) }}"
+        state: latest
+      with_file:
+        - packages.txt
+
+
+- name: .bashrc config
+  hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+    - name: Git Bash Completion script downloaded
+      get_url:
+        url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash"
+        ## TODO: Genericize user! (passed in??)
+        dest: /home/chmay/bin
+        mode: 0755
+
+    - name: Git Prompt script downloaded
+      get_url:
+        url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh"
+        ## TODO: Genericize user! (passed in??)
+        dest: /home/chmay/bin
+        mode: 0755
+
+    - name: Local bin dir exists
+      copy:
+        ## TODO: Genericize user! (passed in??)
+        src: prompt_command.sh
+        dest: /home/chmay/bin
+        mode: 0755
+
+    ## TODO: lineinfile on .bashrc to source the above three scripts!

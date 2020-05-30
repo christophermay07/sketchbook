@@ -1,0 +1,73 @@
+---
+- name: Remove @modelguid from Java files
+  hosts: localhost
+  connection: local
+  become: false
+
+  vars:
+    modelguid_regex: "@modelguid \\{[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}\\}"
+    modelguid_regex_broken: "@modelguid \\{[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}"
+
+  tasks:
+    - name: Find @modelguid
+      find:
+        paths: /home/chmay/src/sif/sifcomp-server
+        recurse: yes
+        patterns: '*.java'
+        contains: '.*@modelguid.*'
+      register: find_output
+
+#    - name: Remove instances of @modelguid - not opening or closing
+#      lineinfile:
+#        path: '{{ item.path }}'
+#        state: absent
+#        # * modelguid....
+#        regexp: '^\s*(\*)\s*{{ modelguid_regex }}\s*$'
+#      with_items:
+#        - "{{ find_output['files'] }}"
+
+    - name: Remove instances of @modelguid - not opening or closing
+      lineinfile:
+        path: '{{ item.path }}'
+        state: absent
+        regexp: '^\s*\* @modelguid\s*$'
+      with_items:
+        - "{{ find_output['files'] }}"
+
+#    - name: Remove instances of @modelguid - not opening or closing (@return)
+#      lineinfile:
+#        path: '{{ item.path }}'
+#        state: absent
+#        # * @return modelguid....
+#        regexp: '^\s*(\*)\s*@return\s*{{ modelguid_regex }}\s*$'
+#      with_items:
+#        - "{{ find_output['files'] }}"
+
+
+#    - name: Remove instances of @modelguid - opening and closing
+#      lineinfile:
+#        path: '{{ item.path }}'
+#        state: absent
+#        # /** modelguid.... */
+#        regexp: '^\s*/\*{1,2}\s*{{ modelguid_regex }}\s*\*/\s*$'
+#      with_items:
+#        - "{{ find_output['files'] }}"
+
+
+#    - name: Remove instances of @modelguid - opening
+#      replace:
+#        path: '{{ item.path }}'
+#        regexp: '^(\s*/\*{1,2}) {{ modelguid_regex }}\s*\**\s*$'
+#        replace: '\1'
+#      with_items:
+#        - "{{ find_output['files'] }}"
+
+#    - name: Remove instances of @modelguid - closing
+#      replace:
+#        path: '{{ item.path }}'
+#        regexp: '^(\s*)\**\s*{{ modelguid_regex }}\s*\**/\s*$'
+#        replace: '\1*/'
+#      with_items:
+#        - "{{ find_output['files'] }}"
+
+# * @modelguid {B80371F8-2C6C-4C3E-A985-E5128E602F11} */
