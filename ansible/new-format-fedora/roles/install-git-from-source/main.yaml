@@ -1,0 +1,103 @@
+---
+- name: Install git prereqs
+  hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+    - name: Install prereq packages
+      dnf:
+        name: "{{ item }}"
+        # TODO: with_file for dnf is deprecated; need to learn to do the style below
+#        name: "{{ query('file',['files/packages.txt']) }}"
+        state: latest
+      with_file:
+        - files/packages.txt
+
+    ## TODO: Can I short-circuit install/uninstall if git executable already exists?
+#    - name: DNF install of git, to clone repo
+#      dnf:
+#        name: git
+#        state: latest
+
+    - name: Clone git repo
+      git:
+        repo: https://github.com/git/git.git
+        dest: /opt/git
+
+    ## TODO: Can I short-circuit install/uninstall if git executable already exists?
+#    - name: DNF install of git, to clone repo
+#      dnf:
+#        name: git
+#        state: latest
+
+    - name: git - make configure
+      make:
+        chdir: /opt/git
+        target: configure
+
+    - name: Run configure script
+      shell: /opt/git/configure --prefix=/usr
+
+    ## TODO: In git docs, this is split into two commands:
+    ## $ make all doc info
+    ## $ sudo make install install-doc install-html install-info
+    - name: git - make remaining targets
+      make:
+        chdir: /opt/git
+        target: "{{ item }} "
+      with_items:
+        - all
+        - doc
+        - info
+        - install
+        - install-doc
+        - install-html
+        - install-info
+
+# make configure
+# ./configure --prefix=/usr
+# make all doc info
+# sudo make install install-doc install-html install-info
+
+
+ 
+- name: .bashrc config for git
+  hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+    - name: Git Bash Completion script downloaded
+      get_url:
+        url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash"
+        ## TODO: Genericize user! (passed in??)
+        dest: /home/chmay/bin
+        mode: 0755
+
+    - name: Git Prompt script downloaded
+      get_url:
+        url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh"
+        ## TODO: Genericize user! (passed in??)
+        dest: /home/chmay/bin
+        mode: 0755
+
+    ## TODO: lineinfile on .bashrc to source the above three scripts!
+
+    - name: Source git bash completion script from .bashrc
+      lineinfile:
+#        ## TODO: Genericize user! (passed in??)
+        path: /home/chmay/.bashrc
+        line: "source ~/bin/git-prompt.sh"
+
+    - name: Source git prompt script from .bashrc
+      lineinfile:
+#        ## TODO: Genericize user! (passed in??)
+        path: /home/chmay/.bashrc
+        line: "source ~/bin/git-prompt.sh"
+
+    - name: Add prompt_command contents to .bashrc
+      blockinfile:
+#        ## TODO: Genericize user! (passed in??)
+        path: /home/chmay/.bashrc
+        block: "{{ lookup('file', 'files/prompt_command.sh') }}"
