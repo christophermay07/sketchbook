@@ -9,6 +9,8 @@
 #  become: true
 
 #  tasks:
+
+
     - name: Update installed packages to latest
       dnf:
         name: "*"
@@ -32,8 +34,8 @@
         # TODO: with_file for dnf is deprecated; need to learn to do the style below
         #name: "{{ query('file', ['packages.txt']) }}"
         state: latest
-      with_file:
-        - packages.txt
+      with_items:
+        - "{{ packages }}"
 
 
 #- name: .bashrc config

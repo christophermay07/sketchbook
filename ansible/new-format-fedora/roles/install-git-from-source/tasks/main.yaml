@@ -19,17 +19,15 @@
     #name: "{{ query('file', ['packages.txt']) }}"
     state: latest
   with_items:
-    - "{{ packages }}"
+    - "{{ git_prereq_packages }}"
 
 
-#- name: Symlink for docbook2texi (required on Fedora-based systems)
+- name: Symlink for docbook2texi (required on Fedora-based systems)
 #  sudo ln -s /usr/bin/db2x_docbook2texi /usr/bin/docbook2x-texi
-  
-
-#- name: Install git
-#  hosts: localhost
-#  connection: local
-#  become: true
+  file:
+    src: /usr/bin/db2x_docbook2texi
+    dest: /usr/bin/docbook2x-texi
+    state: link
 
 ## TODO: Can I short-circuit install/uninstall if git executable already exists?
 #- name: DNF install of git, to clone repo
@@ -41,12 +39,7 @@
   git:
     repo: https://github.com/git/git.git
     dest: /opt/git
-
-## TODO: Can I short-circuit install/uninstall if git executable already exists?
-#- name: DNF install of git, to clone repo
-#  dnf:
-#    name: git
-#    state: latest
+    version: "{{ git_version }}"
 
 - name: git - make configure
   make:
@@ -54,7 +47,9 @@
     target: configure
 
 - name: Run configure script
-  shell: /opt/git/configure --prefix=/usr
+  shell:
+    cmd: "./configure --prefix=/usr"
+    chdir: /opt/git
 
 ## TODO: In git docs, this is split into two commands:
 ## $ make all doc info
@@ -64,13 +59,8 @@
     chdir: /opt/git
     target: "{{ item }} "
   with_items:
-    - all
-    - doc
-    - info
-    - install
-    - install-doc
-    - install-html
-    - install-info
+    - "all doc info"
+    - "install install-doc install-html install-info"
 
 # make configure
 # ./configure --prefix=/usr
@@ -100,6 +90,12 @@
     dest: /home/chmay/bin
     mode: 0755
 
+
+- name: Add git to PATH
+  lineinfile:
+    path: /home/chmay/.bashrc
+    line: "export PATH=${PATH}:/opt/git"
+
 ## TODO: lineinfile on .bashrc to source the above three scripts!
 
 - name: Source git bash completion script from .bashrc
@@ -119,3 +115,9 @@
 #        ## TODO: Genericize user! (passed in??)
     path: /home/chmay/.bashrc
     block: "{{ lookup('file', 'files/prompt_command.sh') }}"
+
+
+- name: Remove DNF install of git
+  dnf:
+    name: git
+    state: absent

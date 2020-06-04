@@ -1,4 +1,4 @@
-git-prereq-packages:
+git_prereq_packages:
   - dh-autoreconf
   - curl-devel
   - expat-devel
@@ -9,3 +9,5 @@ git-prereq-packages:
   - asciidoc
   - xmlto
   - docbook2X
+
+git_version: v2.27.0

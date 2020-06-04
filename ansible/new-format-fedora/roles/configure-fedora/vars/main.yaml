@@ -1,4 +1,4 @@
 packages:
-
+- vim-enhanced
 # TBD: should vlc be its own role, or part of its own role?
 - vlc

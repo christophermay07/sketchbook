@@ -1,0 +1,9 @@
+vbox_guest_prereq_packages:
+- gcc
+- kernel-devel
+- kernel-headers
+- dkms
+- make
+- bzip2
+- perl
+- libxcrypt-compat
