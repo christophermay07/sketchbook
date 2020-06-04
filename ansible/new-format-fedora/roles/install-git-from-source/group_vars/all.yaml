@@ -1,4 +1,4 @@
-packages:
+git-prereq-packages:
   - dh-autoreconf
   - curl-devel
   - expat-devel

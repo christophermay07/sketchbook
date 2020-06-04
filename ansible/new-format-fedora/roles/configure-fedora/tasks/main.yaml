@@ -3,12 +3,12 @@
 ## - This works for user chmay, on Fedora 32. How much can I genericize? (e.g., create role based on OS, etc.)
 ##
 
-- name: TODO - Name me! 
-  hosts: localhost
-  connection: local
-  become: true
+#- name: TODO - Name me! 
+#  hosts: localhost
+#  connection: local
+#  become: true
 
-  tasks:
+#  tasks:
     - name: Update installed packages to latest
       dnf:
         name: "*"
@@ -36,12 +36,12 @@
         - packages.txt
 
 
-- name: .bashrc config
-  hosts: localhost
-  connection: local
-  become: true
+#- name: .bashrc config
+#  hosts: localhost
+#  connection: local
+#  become: true
 
-  tasks:
+#  tasks:
     - name: Git Bash Completion script downloaded
       get_url:
         url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash"

@@ -1,0 +1,5 @@
+---
+- hosts: localhost
+  roles:
+    - configure-fedora
+    - install-git-from-source
