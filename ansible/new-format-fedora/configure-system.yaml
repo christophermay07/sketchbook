@@ -1,6 +1,6 @@
 ---
 - hosts: workstations
   roles:
-    - configure-fedora
+#    - configure-fedora
 #    - install-git-from-source
-#    - virtualbox-guest
+    - virtualbox-guest

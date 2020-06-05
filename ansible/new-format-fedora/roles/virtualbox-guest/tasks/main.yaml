@@ -20,14 +20,28 @@
 #  with_items:
 #    - "{{ vbox_guest_prereq_packages }}"
 
-#KERN_DIR=/usr/src/kernels/`uname -r`
+
 #
-- name: Set kernel version
-  set_fact:
-    KERN_DIR: "/usr/src/kernels/{{ hostvars['localhost'].ansible_kernel }}"
+# TODO: It seems vbox guest additions is a package I can load, instead of doing the manual install??
+#
+#KERN_DIR=/usr/src/kernels/`uname -r`
+#- name: Set kernel version
+#  set_fact:
+#    KERN_DIR: "/usr/src/kernels/{{ hostvars['localhost'].ansible_kernel }}"
 
-- name: DEBUG
-  debug:
-    var: KERN_DIR
+#- name: DEBUG
+#  debug:
+#    var: KERN_DIR
 
+- name: Enable sshd
+  systemd:
+    service: sshd.service
+    enabled: yes
+    state: started
 
+- name: Open port for SSH
+  firewalld:
+    service: ssh
+    state: enabled
+    permanent: yes
+    immediate: yes
