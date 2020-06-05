@@ -28,4 +28,6 @@
 
 - name: DEBUG
   debug:
-    var: "{{ KERN_DIR }}"
+    var: KERN_DIR
+
+

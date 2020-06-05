@@ -88,3 +88,5 @@ prompt_command () {
 
     export PS1
 }
+
+export PROMPT_COMMAND=prompt_command

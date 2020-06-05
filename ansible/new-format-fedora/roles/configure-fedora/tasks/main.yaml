@@ -3,66 +3,174 @@
 ## - This works for user chmay, on Fedora 32. How much can I genericize? (e.g., create role based on OS, etc.)
 ##
 
-#- name: TODO - Name me! 
-#  hosts: localhost
-#  connection: local
-#  become: true
+- name: Update installed packages to latest
+  dnf:
+    name: "*"
+    state: latest
 
-#  tasks:
+- name: RPM Fusion repo (nonfree)
+  dnf:
+    ## TODO: "$(rpm -E %fedora)" to get release number instead of hardcoded 32 (or, is there a better way??)
+    name: "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-32.noarch.rpm"
+    state: latest
 
+- name: RPM Fusion repo (free)
+  dnf:
+    ## TODO: "$(rpm -E %fedora)" to get release number instead of hardcoded 32 (or, is there a better way??)
+    name: "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-32.noarch.rpm"
+    state: latest
 
-    - name: Update installed packages to latest
-      dnf:
-        name: "*"
-        state: latest
-
-    - name: RPM Fusion repo (nonfree)
-      dnf:
-        ## TODO: "$(rpm -E %fedora)" to get release number instead of hardcoded 32 (or, is there a better way??)
-        name: "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-32.noarch.rpm"
-        state: latest
-
-    - name: RPM Fusion repo (free)
-      dnf:
-        ## TODO: "$(rpm -E %fedora)" to get release number instead of hardcoded 32 (or, is there a better way??)
-        name: "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-32.noarch.rpm"
-        state: latest
-
-    - name: Install packages
-      dnf:
-        name: "{{ item }}"
-        # TODO: with_file for dnf is deprecated; need to learn to do the style below
-        #name: "{{ query('file', ['packages.txt']) }}"
-        state: latest
-      with_items:
-        - "{{ packages }}"
+- name: Install packages
+  dnf:
+    name: "{{ item }}"
+    # TODO: with_file for dnf is deprecated; need to learn to do the style below
+    #name: "{{ query('file', ['packages.txt']) }}"
+    state: latest
+  with_items:
+    - "{{ packages }}"
 
 
-#- name: .bashrc config
-#  hosts: localhost
-#  connection: local
-#  become: true
 
-#  tasks:
-    - name: Git Bash Completion script downloaded
-      get_url:
-        url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash"
-        ## TODO: Genericize user! (passed in??)
-        dest: /home/chmay/bin
-        mode: 0755
+- name: bin dir exists under home
+  file:
+    path: "{{ homedir }}/bin"
+    state: directory
+    ## TODO: Genericize user! (passed in??)
+    owner: chmay
+    group: chmay
 
-    - name: Git Prompt script downloaded
-      get_url:
-        url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh"
-        ## TODO: Genericize user! (passed in??)
-        dest: /home/chmay/bin
-        mode: 0755
+- name: Git Bash Completion script downloaded
+  get_url:
+    url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash"
+    dest: "{{ homedir }}/bin"
+    mode: 0755
+    ## TODO: Genericize user! (passed in??)
+    owner: chmay
+    group: chmay
 
-    - name: Local bin dir exists
-      copy:
-        ## TODO: Genericize user! (passed in??)
-        src: prompt_command.sh
-        dest: /home/chmay/bin
-        mode: 0755
+- name: Git Prompt script downloaded
+  get_url:
+    url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh"
+    dest: "{{ homedir }}/bin"
+    mode: 0755
+    ## TODO: Genericize user! (passed in??)
+    owner: chmay
+    group: chmay
 
-    ## TODO: lineinfile on .bashrc to source the above three scripts!
+- name: Local bin dir exists
+  copy:
+    src: prompt_command.sh
+    dest: "{{ homedir }}/bin"
+    mode: 0755
+    ## TODO: Genericize user! (passed in??)
+    owner: chmay
+    group: chmay
+
+
+- name: Source git bash completion script in bashrc
+  lineinfile:
+    path: "{{ homedir }}/.bashrc"
+    line: "source {{ homedir }}/bin/git-completion.bash"
+
+- name: Source git bash prompt script in bashrc
+  lineinfile:
+    path: "{{ homedir }}/.bashrc"
+    line: "source {{ homedir }}/bin/git-prompt.sh"
+
+- name: Modify PS1 to add git, error code info
+  blockinfile:
+    path: "{{ homedir }}/.bashrc"
+    ## TODO: figure out how to reference the file from files/ role dir!
+    block: |
+      #######################
+      # Prompt Command: Git #
+      #######################
+
+      prompt_command () {
+          ## Display error code -- this MUST be at the top of this function
+
+          EXIT_CODE="$?"
+
+          if [ ${EXIT_CODE} -eq 0 ]; then # set an error string for the prompt, if applicable
+              ERRPROMPT=""
+          else
+              ERRPROMPT='->($EXIT_CODE)'
+          fi
+
+          ## Set color variables
+          local BLACK="\[\033[0;30m\]"
+          local GRAY="\[\033[1;30m\]"
+
+          local RED="\[\033[0;31m\]"
+          local LRED="\[\033[1;31m\]"
+
+          local GREEN="\[\033[0;32m\]"
+          local LGREEN="\[\033[1;32m\]"
+
+          local BROWN="\[\033[0;33m\]"
+          local YELLOW="\[\033[1;33m\]"
+
+          local BLUE="\[\033[0;34m\]"
+          local LBLUE="\[\033[1;34m\]"
+
+          local PURPLE="\[\033[0;35m\]"
+          local LPURPLE="\[\033[1;35m\]"
+
+          local CYAN="\[\033[0;36m\]"
+          local LCYAN="\[\033[0;36m\]"
+
+          local LGRAY="\[\033[0;37m\]"
+          local WHITE="\[\033[1;37m\]"
+
+          ## Default Terminal text color
+          local DEFAULT="\[\033[0;39m\]"
+
+          ## Set the error prompt color
+          ERRPROMPT="${RED}${ERRPROMPT}"
+
+          # Non-empty value: Display unstaged (*) and staged(+) changes
+          export GIT_PS1_SHOWDIRTYSTATE="x"
+
+          # Non-empty value: Display stashed ($) changes
+          export GIT_PS1_SHOWSTASHSTATE=""
+
+          # Non-empty value: Display untracked (%) files
+          export GIT_PS1_SHOWUNTRACKEDFILES="x"
+
+          # Display ahead (>), behind (<), or diverged (<>) relative to upstream
+          export GIT_PS1_SHOWUPSTREAM="auto"
+
+          ## Git -- show current branch
+          if [ "\$(type -t __git_ps1)" ]; then
+              BRANCH="\$(__git_ps1 '(%s)')"
+          else
+              BRANCH=""
+          fi
+
+          local PS1_USER="${LRED}\u"
+          local PS1_HOSTNAME="${LBLUE}@\h"
+          local PS1_TIME="${LGRAY}\t"
+          local PS1_DIR="${LBLUE}\W"
+
+          # Depending on how terminal displays, green may look better than light purple
+          #local PS1_BRANCH="${GREEN}${BRANCH}"
+          local PS1_BRANCH="${LPURPLE}${BRANCH}"
+
+          ## Clear PS1
+          PS1=""
+
+          ## Display user, hostname, and time
+          PS1="${PS1}${LBLUE}[ ${PS1_USER}${PS1_HOSTNAME} ${PS1_TIME} ${PS1_DIR}${PS1_BRANCH} ${LBLUE}]"
+
+          ## Error indicator
+          PS1="${PS1}${ERRPROMPT}"
+
+          ## Bash prompt delimiter (with color reset)
+          PS1="${PS1} ${DEFAULT}\$ "
+
+          export PS1
+      }
+
+      export PROMPT_COMMAND=prompt_command
+
+
