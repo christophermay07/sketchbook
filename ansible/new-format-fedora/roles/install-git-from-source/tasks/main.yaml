@@ -57,10 +57,15 @@
 - name: git - make remaining targets
   make:
     chdir: /opt/git
-    target: "{{ item }} "
+    target: "{{ item }}"
   with_items:
-    - "all doc info"
-    - "install install-doc install-html install-info"
+    - "all"
+    - "doc"
+    - "info"
+    - "install"
+    - "install-doc"
+    - "install-html"
+    - "install-info"
 
 # make configure
 # ./configure --prefix=/usr
@@ -75,20 +80,27 @@
 #  connection: local
 #  become: true
 
-#  tasks:
-- name: Git Bash Completion script downloaded
-  get_url:
-    url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash"
-    ## TODO: Genericize user! (passed in??)
-    dest: /home/chmay/bin
-    mode: 0755
+#
+#
+# TODO!!!! This exists in the standard setup role; move those steps here!!
+#
+#
 
-- name: Git Prompt script downloaded
-  get_url:
-    url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh"
+
+#  tasks:
+#- name: Git Bash Completion script downloaded
+#  get_url:
+#    url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash"
     ## TODO: Genericize user! (passed in??)
-    dest: /home/chmay/bin
-    mode: 0755
+#    dest: /home/chmay/bin
+#    mode: 0755
+
+#- name: Git Prompt script downloaded
+#  get_url:
+#    url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh"
+    ## TODO: Genericize user! (passed in??)
+#    dest: /home/chmay/bin
+#    mode: 0755
 
 
 - name: Add git to PATH
@@ -98,23 +110,23 @@
 
 ## TODO: lineinfile on .bashrc to source the above three scripts!
 
-- name: Source git bash completion script from .bashrc
-  lineinfile:
+#- name: Source git bash completion script from .bashrc
+#  lineinfile:
 #        ## TODO: Genericize user! (passed in??)
-    path: /home/chmay/.bashrc
-    line: "source ~/bin/git-prompt.sh"
+#    path: /home/chmay/.bashrc
+#    line: "source ~/bin/git-prompt.sh"
 
-- name: Source git prompt script from .bashrc
-  lineinfile:
+#- name: Source git prompt script from .bashrc
+#  lineinfile:
 #        ## TODO: Genericize user! (passed in??)
-    path: /home/chmay/.bashrc
-    line: "source ~/bin/git-prompt.sh"
+#    path: /home/chmay/.bashrc
+#    line: "source ~/bin/git-prompt.sh"
 
-- name: Add prompt_command contents to .bashrc
-  blockinfile:
+#- name: Add prompt_command contents to .bashrc
+#  blockinfile:
 #        ## TODO: Genericize user! (passed in??)
-    path: /home/chmay/.bashrc
-    block: "{{ lookup('file', 'files/prompt_command.sh') }}"
+#    path: /home/chmay/.bashrc
+#    block: "{{ lookup('file', 'files/prompt_command.sh') }}"
 
 
 - name: Remove DNF install of git
