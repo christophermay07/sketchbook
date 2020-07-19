@@ -4,9 +4,13 @@
   connection: local
   become: false
 
+  #### NOTE: This file is a mess due to all the random conditions I needed to check over 14k+ files;
+  #### saving this not as a good example of anything, but simply a quick reference for "find", "lineinfile"
+
+  # @modelguid {B80371F8-2C6C-4C3E-A985-E5128E602F11}
   vars:
     modelguid_regex: "@modelguid \\{[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}\\}"
-    modelguid_regex_broken: "@modelguid \\{[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}"
+    #modelguid_regex_broken: "@modelguid \\{[A-Za-z0-9]{8}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{12}"
 
   tasks:
     - name: Find @modelguid
@@ -70,4 +74,3 @@
 #      with_items:
 #        - "{{ find_output['files'] }}"
 
-# * @modelguid {B80371F8-2C6C-4C3E-A985-E5128E602F11} */
