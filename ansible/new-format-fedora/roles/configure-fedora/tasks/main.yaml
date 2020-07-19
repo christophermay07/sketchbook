@@ -1,7 +1,9 @@
 ---
 ## MAJOR TODOS:
-## - This works for user chmay, on Fedora 32. How much can I genericize? (e.g., create role based on OS, etc.)
+## - This works for Fedora 32. How much can I genericize? (e.g., create role based on OS, etc.)
 ##
+
+#### Base packages and repos ####
 
 - name: Update installed packages to latest
   dnf:
@@ -29,58 +31,69 @@
   with_items:
     - "{{ packages }}"
 
+#### Copy misc config files to user home directories ####
+#
 
+#### TODO: .bashrc stuff; should this be abstracted out to a different file?? ####
 
 - name: bin dir exists under home
   file:
-    path: "{{ homedir }}/bin"
+    path: "{{ homedir }}/{{ item }}/bin"
     state: directory
-    ## TODO: Genericize user! (passed in??)
-    owner: chmay
-    group: chmay
+    owner: "{{ item }}"
+    group: "{{ item }}"
+  with_items:
+    - "{{ users }}"
 
 - name: Git Bash Completion script downloaded
   get_url:
     url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-completion.bash"
-    dest: "{{ homedir }}/bin"
+    dest: "{{ homedir }}/{{ item }}/bin"
     mode: 0755
-    ## TODO: Genericize user! (passed in??)
-    owner: chmay
-    group: chmay
+    owner: "{{ item }}"
+    group: "{{ item }}"
+  with_items:
+    - "{{ users }}"
 
 - name: Git Prompt script downloaded
   get_url:
     url: "https://raw.githubusercontent.com/git/git/master/contrib/completion/git-prompt.sh"
-    dest: "{{ homedir }}/bin"
+    dest: "{{ homedir }}/{{ item }}/bin"
     mode: 0755
-    ## TODO: Genericize user! (passed in??)
-    owner: chmay
-    group: chmay
+    owner: "{{ item }}"
+    group: "{{ item }}"
+  with_items:
+    - "{{ users }}"
 
 - name: Local bin dir exists
   copy:
     src: prompt_command.sh
-    dest: "{{ homedir }}/bin"
+    dest: "{{ homedir }}/{{ item }}/bin"
     mode: 0755
-    ## TODO: Genericize user! (passed in??)
-    owner: chmay
-    group: chmay
+    owner: "{{ item }}"
+    group: "{{ item }}"
+  with_items:
+    - "{{ users }}"
 
 
 - name: Source git bash completion script in bashrc
   lineinfile:
-    path: "{{ homedir }}/.bashrc"
-    line: "source {{ homedir }}/bin/git-completion.bash"
+    path: "{{ homedir }}/{{ item }}/.bashrc"
+    line: "source {{ homedir }}/{{ item }}/bin/git-completion.bash"
+  with_items:
+    - "{{ users }}"
 
 - name: Source git bash prompt script in bashrc
   lineinfile:
-    path: "{{ homedir }}/.bashrc"
-    line: "source {{ homedir }}/bin/git-prompt.sh"
+    path: "{{ homedir }}/{{ item }}/.bashrc"
+    line: "source {{ homedir }}/{{ item }}/bin/git-prompt.sh"
+  with_items:
+    - "{{ users }}"
 
 - name: Modify PS1 to add git, error code info
   blockinfile:
-    path: "{{ homedir }}/.bashrc"
-    ## TODO: figure out how to reference the file from files/ role dir!
+    path: "{{ homedir }}/{{ item }}/.bashrc"
+    ## TODO: figure out how to reference the file from "files/" role dir!
     block: |
       #######################
       # Prompt Command: Git #
@@ -153,7 +166,6 @@
           local PS1_DIR="${LBLUE}\W"
 
           # Depending on how terminal displays, green may look better than light purple
-          #local PS1_BRANCH="${GREEN}${BRANCH}"
           local PS1_BRANCH="${LPURPLE}${BRANCH}"
 
           ## Clear PS1
@@ -172,5 +184,6 @@
       }
 
       export PROMPT_COMMAND=prompt_command
-
+  with_items:
+    - "{{ users }}"
 
