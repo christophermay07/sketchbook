@@ -32,7 +32,18 @@
     - "{{ packages }}"
 
 #### Copy misc config files to user home directories ####
-#
+
+- name: Move rc files to homedir
+  copy:
+    src: "{{ item[1] }}"
+    dest: "{{ homedir }}/{{ item[0] }}/.{{ item[1] }}"
+    mode: 0755
+    owner: "{{ item[0] }}"
+    group: "{{ item[0] }}"
+  with_nested:
+    - "{{ users }}"
+    - [ 'vimrc', 'curlrc' ]
+
 
 #### TODO: .bashrc stuff; should this be abstracted out to a different file?? ####
 
@@ -65,7 +76,7 @@
   with_items:
     - "{{ users }}"
 
-- name: Local bin dir exists
+- name: Move git prompt command script to user bin dir
   copy:
     src: prompt_command.sh
     dest: "{{ homedir }}/{{ item }}/bin"
