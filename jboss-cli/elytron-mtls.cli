@@ -1,0 +1,221 @@
+########################################################################################################################
+# JBoss EAP Elytron mTLS Setup Script
+#
+# PURPOSE:
+#   Configure Elytron in JBoss EAP 7.4+ to support HTTPS with mutual TLS (mTLS). This script deactivates legacy security
+#   realms, wires Elytron into subsystems, and sets up keystore/truststore, key/trust managers, and server SSL context.
+#
+# USAGE:
+#   - ${JBOSS_HOME)/bin/jboss-cli.sh --file=elytron-mtls.cli
+#
+# ASSUMPTIONS:
+#   - Standalone server mode with $server_config_file as the target XML.
+#   - Variables have been edited in the "VARIABLES" section to reflect the intended configuration.
+#   - The server is not running when modifications are made to the config.
+#   - $server_config_file has the stock EAP 7.4 config for security settings (i.e., no other changes have been made).
+#   - Keystore contains the server's private key and certificate chain.
+#   - Truststore contains public CA certificates required for mTLS client validation.
+#
+# NOTES:
+#   - TLS protocols are pinned (default TLSv1.2; adjust vars for JDK 11+ to prefer TLSv1.3).
+#   - :load commands are included for runtime safety -- harmless in offline mode, but prevent debugging heartaches if the
+#     script is ever run against a live server.
+#   - "De-fangs" ApplicationRealm (legacy) instead of deleting it outright, so config references remain valid but can't
+#     be used for authentication.
+#
+# WARNING:
+#   - This script is NOT intended for domain mode.
+#
+# RESULT:
+#   - Elytron is fully enabled for HTTPS + mTLS.
+#   - Legacy security realms are disabled, preventing fallback/conflicts.
+#   - Server config is updated consistently and safely.
+########################################################################################################################
+
+#############
+# VARIABLES #
+#############
+
+##
+## If possible, configure your environment to match the defaults below
+## If not, update the following variables to suit your setup
+##
+
+## Which standalone server XML file to modify
+## NOTE: This script is not intended to be used for domain mode
+set server_config_file=standalone.xml
+
+## The keystore contains the private key and certificate chain for this JBoss EAP server
+# JBoss EAP resolves the keystore path as `$keystore_relative_to/$keystore_path`
+set keystore_path=server.keystore
+set keystore_relative_to=jboss.server.config.dir
+# JKS is deprecated; use PKCS12 when creating a new keystore
+set keystore_type=JKS
+# TODO: Store credentials securely using a credential store instead of plaintext
+set keystore_credential_ref=clear-text=changeit
+
+## The truststore contains public certificates of trusted clients or CAs (required for mTLS)
+# JBoss EAP resolves the truststore path as `$truststore_relative_to/$truststore_path`
+set truststore_path=client.keystore
+set truststore_relative_to=jboss.server.config.dir
+# JKS is deprecated; use PKCS12 when creating a new truststore
+set truststore_type=JKS
+# TODO: Store credentials securely using a credential store instead of plaintext
+set truststore_credential_ref=clear-text=changeit
+
+
+## The key manager unlocks the server's private key from serverKS so Elytron can present the cert chain during TLS handshakes (uses the private key password)
+set keymanager_credential_ref=clear-text=changeit
+
+
+# TLS protocol selection
+# NOTE: tls_protocols must be comma-separated, quoted strings so it expands correctly inside [] as a list of strings
+# Example: "TLSv1.3","TLSv1.2"
+# For JDK 8, TLS 1.2 is explicitly required
+set tls_protocols="TLSv1.2"
+# For JDK 11+, prefer TLSv1.3 (with fallback to 1.2 for compatibility)
+#set tls_protocols="TLSv1.3","TLSv1.2"
+
+
+###### SCRIPT STARTS HERE -- DO NOT MODIFY BELOW HERE ###################################
+
+
+#######################
+# Embed Server Config #
+#######################
+
+# Loads the server config (offline) so all subsequent commands apply to that XML file
+embed-server --server-config=$server_config_file
+
+
+##############################
+# Switch to Elytron Security #
+##############################
+
+## Although the Legacy Security subsystem is active by default in JBoss EAP 7.4, it is deprecated; the following
+## commands deactivate the Legacy Security subsystem and switch various server subsystems to use Elytron 
+
+# Map the legacy security domain name "other" so Undertow and EJB3 use Elytron's "ApplicationDomain"
+# WHEN/WHY: Needed if your apps declare a security-domain (often "other") AND you want app-level auth:
+#     - web.xml security-constraints / @RolesAllowed
+#     - Elytron-backed principals & roles
+#     - Identity/role propagation into EJBs
+# NOTE: Not needed for TLS or mTLS transport-only setups (no app roles), but harmless if present
+/subsystem=undertow/application-security-domain=other:add(security-domain=ApplicationDomain)
+/subsystem=ejb3/application-security-domain=other:add(security-domain=ApplicationDomain)
+
+
+# Configure the Batch subsystem to use Elytron's "ApplicationDomain" directly
+# WHEN/WHY: Batch jobs that perform secured operations (e.g., calling secured EJBs/services) must reference an Elytron
+# domain so job steps run with an application identity/roles. If jobs never touch secured resources, this is optional
+/subsystem=batch-jberet:write-attribute(name=security-domain, value=ApplicationDomain)
+
+
+# Update the remoting connector to authenticate via Elytron instead of the legacy security-realm
+# WHEN/WHY: Only needed if using remote EJB, JBoss CLI, or JMX over Remoting
+/subsystem=remoting/http-connector=http-remoting-connector:undefine-attribute(name=security-realm)
+/subsystem=remoting/http-connector=http-remoting-connector:\
+    write-attribute(name=sasl-authentication-factory, value=application-sasl-authentication)
+
+
+# Switch the management interface from legacy realms to Elytron
+# WHEN/WHY: Needed so Elytron handles all mgmt access (CLI, console, REST API)
+#     - http-upgrade (CLI over Remoting/HTTP) uses Elytron SASL auth (management-sasl-authentication)
+#     - http-authentication-factory (mgmt console / REST API) uses Elytron HTTP auth (management-http-authentication)
+#     - security-realm reference is removed to avoid legacy auth
+/core-service=management/management-interface=http-interface:\
+    write-attribute(name=http-upgrade, value={enabled=true, sasl-authentication-factory=management-sasl-authentication})
+/core-service=management/management-interface=http-interface:\
+    write-attribute(name=http-authentication-factory, value=management-http-authentication)
+/core-service=management/management-interface=http-interface:undefine-attribute(name=security-realm)
+
+
+# Remove the legacy ManagementRealm entirely
+# WHEN/WHY: Once the management interface is switched to Elytron, nothing should reference it anymore
+/core-service=management/security-realm=ManagementRealm:remove
+
+
+# "De-fang" the legacy ApplicationRealm under core-service=management
+# WHEN/WHY: If the legacy "ApplicationRealm" is fully removed but something in the server config still references it,
+# the server will fail to start. Instead, strip out its authn/authz configs so no legacy login path is usable
+# NOTE: This only affects the legacy realm; it does not affect Elytron's ApplicationDomain/ApplicationRealm
+/core-service=management/security-realm=ApplicationRealm/authentication=local:remove
+/core-service=management/security-realm=ApplicationRealm/authentication=properties:remove
+/core-service=management/security-realm=ApplicationRealm/authorization=properties:remove
+
+
+###############
+# Set up mTLS #
+###############
+
+# Define the Elytron keystore that holds the server's private key/cert chain
+# WHEN/WHY: Needed for HTTPS listeners and CLIENT_CERT auth; Elytron reads from this keystore at runtime
+/subsystem=elytron/key-store=serverKS:add(\
+    path=$keystore_path,\
+    relative-to=$keystore_relative_to,\
+    type=$keystore_type,\
+    credential-reference={$keystore_credential_ref})
+
+
+# Load the keystore contents after adding it
+# WHEN/WHY: Required if you add the keystore at runtime; without :load, Elytron treats it as empty until restart
+/subsystem=elytron/key-store=serverKS:load
+
+
+# Define a key manager backed by the server keystore
+# WHEN/WHY: Needed so Elytron can access the private key in serverKS and present the cert chain during TLS handshake
+#   - credential-reference here unlocks the private key itself (often same as keystore password, but can differ)
+#   - key-manager is later consumed by a server-ssl-context
+/subsystem=elytron/key-manager=serverKM:add(\
+    key-store=serverKS,\
+    credential-reference={$keymanager_credential_ref})
+
+
+# Create a truststore for validating client certificates (mTLS)
+# WHEN/WHY: Required whenever mTLS is enabled via Elytron server-ssl-context (need-client-auth=true); must contain the
+# issuing CA(s) for client certs, including any intermediates
+# NOTE: Do not put private keys in the truststore
+/subsystem=elytron/key-store=trustKS:add(\
+    path=$truststore_path,\
+    relative-to=$truststore_relative_to,\
+    type=$truststore_type,\
+    credential-reference={$truststore_credential_ref})
+
+
+# Load the truststore contents if added at runtime
+# WHEN/WHY: Without :load, Elytron won't see the imported CA certs until restart
+# NOTE: This script targets the embedded config of a non-running instance, so :load isn't strictly needed -- but it's
+# harmless, and it'll save some debugging heartaches if these commands are ever run against a live server
+/subsystem=elytron/key-store=trustKS:load
+
+
+# Bind the truststore to a trust manager (consumed by the SSL context)
+/subsystem=elytron/trust-manager=serverTM:add(key-store=trustKS)
+
+
+# Create a server SSL context that enforces client-auth (mTLS)
+# WHEN/WHY: Pins the TLS protocols, makes mTLS required, and binds the trust manager (required for mTLS)
+/subsystem=elytron/server-ssl-context=mtlsSSC:add(\
+    key-manager=serverKM,\
+    trust-manager=serverTM,\
+    protocols=[$tls_protocols],\
+    need-client-auth=true)
+
+
+# Point the HTTPS listener at the Elytron SSL context
+# WHEN/WHY: Enable mTLS via Elytron by attaching the SSL context defined above ("mtlsSSC")
+/subsystem=undertow/server=default-server/https-listener=https:\
+    write-attribute(name=ssl-context, value=mtlsSSC)
+
+# Stop using the legacy security-realm
+# WHEN/WHY: Removing security-realm prevents legacy fallback/conflicts
+/subsystem=undertow/server=default-server/https-listener=https:\
+    undefine-attribute(name=security-realm)
+
+
+###############################
+# Stop Embedded Server Config #
+###############################
+
+# Stop the embedded server to prevent any accidental changes to the server config past this point
+stop-embedded-server
